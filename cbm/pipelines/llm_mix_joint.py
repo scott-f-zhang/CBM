@@ -59,6 +59,7 @@ def get_cbm_LLM_mix_joint(
         test_ds = EssayDataset("test", tokenizer, cfg.max_len)
         num_labels = 6  # Essay: 0-5 score classification (6 classes)
         num_concept_labels = 8  # Essay concepts: 8 concept columns
+        num_each_concept_classes = 5  # Essay concepts: 0-4 (5 classes)
     elif cfg.dataset == 'qa':
         # QADataset prepared with 8 concept columns, 6-class scoring task (0-5)
         train_ds = QADataset("train", tokenizer, cfg.max_len)

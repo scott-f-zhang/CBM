@@ -54,6 +54,7 @@ def get_cbm_joint(
         test_ds = EssayDataset("test", tokenizer, cfg.max_len)
         num_labels = 6  # Essay: 0-5 score classification (6 classes)
         num_concept_labels = 8  # Essay concepts: 8 concept columns
+        num_each_concept_classes = 5  # Essay concepts: 0-4 (5 classes)
     elif cfg.dataset == 'qa':
         train_ds = QADataset("train", tokenizer, cfg.max_len)
         val_ds = QADataset("val", tokenizer, cfg.max_len)

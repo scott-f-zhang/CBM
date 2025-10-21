@@ -21,16 +21,32 @@ from cbm import (
 )
 from cbm.config.defaults import RunConfig
 
+# Learning rate candidates from the paper (determined via grid search)
+MODEL_CONFIG = {
+    'bert-base-uncased': {
+        'enabled': True,
+        'lr_candidates': [1e-5, 3e-5, 5e-5, 1e-4, 5e-4],  # Sorted by value
+    },
+    'gpt2': {
+        'enabled': True,
+        'lr_candidates': [1e-5, 5e-4, 1e-4, 5e-3, 1e-3],  # Sorted by value
+    },
+    'lstm': {
+        'enabled': True,
+        'lr_candidates': [1e-4, 1e-3, 1e-2, 5e-2, 1e-1],  # Sorted by value
+    },
+    'roberta-base': {
+        'enabled': True,
+        'lr_candidates': [1e-5, 3e-5, 5e-5, 1e-4, 5e-4],  # Sorted by value
+    },
+}
+
 
 def get_learning_rate_candidates(model_name: str) -> List[float]:
     """Get learning rate candidates for a specific model."""
-    base_lrs = {
-        'bert-base-uncased': [1e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4],
-        'roberta-base': [1e-6, 5e-6, 1e-5, 2e-5, 3e-5, 5e-5],
-        'gpt2': [1e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3],
-        'lstm': [1e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2],
-    }
-    return base_lrs.get(model_name, [1e-6, 1e-5, 2e-5, 5e-5])
+    if model_name in MODEL_CONFIG:
+        return MODEL_CONFIG[model_name]['lr_candidates']
+    return [1e-6, 1e-5, 2e-5, 5e-5]  # Default fallback
 
 
 def get_dataset_variant(dataset: str) -> str:
@@ -140,8 +156,8 @@ def find_best_lr(results: Dict[float, Dict], metric: str = 'combined_score') -> 
 def run_lr_finder(dataset: str):
     """Run learning rate finder for all models on specified dataset."""
     
-    # Models to test
-    models = ['bert-base-uncased', 'roberta-base', 'gpt2', 'lstm']
+    # Models to test (only enabled ones)
+    models = [model for model, config in MODEL_CONFIG.items() if config.get('enabled', False)]
     
     # Results storage
     all_results = {}

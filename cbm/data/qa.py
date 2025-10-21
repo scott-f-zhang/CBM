@@ -69,6 +69,7 @@ class QADataset(Dataset):
         # Basic fields
         self.data = df
         self.text = df["text"].astype(str)
+        # Use labels directly (0-5, 6 classes)
         self.labels = df["label"].astype(int)
 
         # Use concept values directly as they are already numeric
