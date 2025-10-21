@@ -9,6 +9,7 @@ from ..config.defaults import make_run_config
 from ..models.loaders import load_model_and_tokenizer
 from ..data.cebab import CEBaBDataset
 from ..data.imdb import IMDBDataset
+from ..data.qa import QADataset
 from ..data.essay import EssayDataset
 from ..training.mixup import mixup_hidden_concept, MixupLoss
 
@@ -54,10 +55,16 @@ def get_cbm_LLM_mix_joint(
         num_concept_labels = 8 if getattr(train_ds, "extra", None) is not None else 4
     elif cfg.dataset == 'essay':
         # EssayDataset prepared with 8 concept columns, 6-class scoring task (0-5)
-        train_ds = EssayDataset("train", tokenizer, cfg.max_len, variant=(cfg.variant if cfg.variant in ("manual","generated") else "generated"))
-        test_ds = EssayDataset("test", tokenizer, cfg.max_len, variant=(cfg.variant if cfg.variant in ("manual","generated") else "generated"))
+        train_ds = EssayDataset("train", tokenizer, cfg.max_len)
+        test_ds = EssayDataset("test", tokenizer, cfg.max_len)
         num_labels = 6  # Essay: 0-5 score classification (6 classes)
-        num_concept_labels = 8
+        num_concept_labels = 8  # Essay concepts: 8 concept columns
+    elif cfg.dataset == 'qa':
+        # QADataset prepared with 8 concept columns, 6-class scoring task (0-5)
+        train_ds = QADataset("train", tokenizer, cfg.max_len)
+        test_ds = QADataset("test", tokenizer, cfg.max_len)
+        num_labels = 6  # QA: 0-5 score classification (6 classes)
+        num_concept_labels = 8  # QA concepts: 8 concept columns
     else:
         train_ds = CEBaBDataset("train", tokenizer, cfg.max_len, variant=cfg.variant)
         test_ds = CEBaBDataset("test", tokenizer, cfg.max_len, variant=cfg.variant)

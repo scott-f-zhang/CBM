@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 
 
 ESSAY_CONCEPT_COLUMNS: List[str] = [
-    "FC", "CC", "TU", "CP", "R", "DU", "EE", "FR"
+    "TC", "UE", "OC", "GM", "VA", "SV", "CTD", "FR"
 ]
 
 
@@ -14,14 +14,12 @@ class EssayDataset(Dataset):
     """Dataset wrapper for essay data prepared as CSVs with columns:
 
     Required columns per row:
-      - text: string (already combined Q/A text)
-      - label: int (0-5, representing rounded score from score_avg)
-      - concept columns: FC, CC, TU, CP, R, DU, EE, FR with values in
-        {"Positive", "Negative", "unknown"}
+      - text: string (full_text from essay data)
+      - label: int (0-5, representing rounded score)
+      - concept columns: TC, UE, OC, GM, VA, SV, CTD, FR with numeric values
+        (0, 1, 2)
 
-    variant: "manual" | "generated"
-      manual -> train_manual.csv / dev_manual.csv / test_manual.csv
-      generated -> train_generated.csv / dev_generated.csv / test_generated.csv
+    Files: train.csv / dev.csv / test.csv
     """
 
     def __init__(
@@ -29,14 +27,11 @@ class EssayDataset(Dataset):
         split: str,
         tokenizer,
         max_len: int,
-        variant: str = "manual",
     ):
         assert split in ("train", "val", "test"), f"Unsupported split: {split}"
-        assert variant in ("manual", "generated"), f"Unsupported variant: {variant}"
 
         self.tokenizer = tokenizer
         self.max_len = max_len
-        self.variant = variant
 
         # Resolve repo root and dataset directory to avoid CWD dependence
         SELF_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +42,7 @@ class EssayDataset(Dataset):
 
         # Map 'val' split to files named with 'dev' prefix in cleaned outputs
         split_prefix = 'dev' if split == 'val' else split
-        fname = f"{split_prefix}_{'manual' if variant == 'manual' else 'generated'}.csv"
+        fname = f"{split_prefix}.csv"
         # Prefer cleaned/ paths as in data_prepare.ipynb; fallback to essay/
         candidate_paths = [
             os.path.join(ESSAY_DIR_CLEANED, fname),
@@ -76,18 +71,10 @@ class EssayDataset(Dataset):
         self.text = df["text"].astype(str)
         self.labels = df["label"].astype(int)
 
-        # Map concept string labels to {0,1,2}: Negative->0, Positive->1, unknown->2
-        def concept_to_int(v: str) -> int:
-            s = str(v).strip()
-            if s == "Positive":
-                return 1
-            if s == "Negative":
-                return 0
-            return 2
-
+        # Use concept values directly as they are already numeric
         self.concepts = {}
         for c in ESSAY_CONCEPT_COLUMNS:
-            self.concepts[c] = df[c].apply(concept_to_int).astype(int)
+            self.concepts[c] = df[c].astype(int)
 
         # Keep all rows
         self.indices = list(range(len(self.labels)))
@@ -120,5 +107,4 @@ class EssayDataset(Dataset):
             item[f"{c}_concept"] = torch.tensor(concept_values[idx], dtype=torch.long)
 
         return item
-
 

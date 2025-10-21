@@ -11,7 +11,7 @@ class RunConfig:
     batch_size: int = 8
     num_epochs: int = 1
     optimizer_lr: float = 1e-5
-    # 'cebab' | 'imdb'
+    # 'cebab' | 'imdb' | 'essay' | 'qa'
     dataset: str = "cebab"
     # Enable early stopping during training
     early_stopping: bool = True
@@ -19,6 +19,7 @@ class RunConfig:
     # unified variant:
     # cebab: 'pure'|'aug'|'aug_yelp'|'aug_both'
     # imdb: 'manual'|'aug_manual'|'gen'|'aug_gen'
+    # essay, qa: single variant (no variant parameter needed)
     variant: str = "pure"
 
 

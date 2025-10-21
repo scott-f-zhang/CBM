@@ -54,7 +54,7 @@ BASE_RUN = RunConfig(
 )
 
 # Which datasets and models to run
-DATASETS = ["essay"]  # choose from: "cebab", "imdb", "essay"
+DATASETS = ["essay", "qa"]  # choose from: "cebab", "imdb", "essay", "qa"
 MODELS = ["bert-base-uncased", "roberta-base", "gpt2", "lstm"]
 MODELS = ["bert-base-uncased", "roberta-base"]
 
@@ -65,19 +65,32 @@ OUTPUT_CSV = os.path.join(MAIN_DIR, "result_essay.csv")
 from typing import Optional
 
 
-def get_learning_rate(model_name: str) -> Optional[float]:
-    """Return a reasonable default learning rate for a given backbone name.
+def get_learning_rate(model_name: str, dataset: str) -> Optional[float]:
+    """从 cbm/lr_rate/<dataset>_lr_rate.csv 加载学习率配置
     
-    For essay dataset, using optimized learning rates found by learning rate finder.
-    Updated based on actual LR finder results with 6-class configuration.
+    Args:
+        model_name: 模型名称
+        dataset: 数据集名称
+    
+    Returns:
+        学习率或 None（如果找不到）
     """
-    lr_rate_dt = {
-        'lstm': 5e-4,           # Essay optimized: 0.0005 (joint pipeline, combined_score=1.361) - 实际最优值
-        'gpt2': 5e-5,           # Essay optimized: 5e-5 (joint pipeline, combined_score=1.470)
-        'roberta-base': 2e-5,   # Essay optimized: 2e-5 (joint pipeline, combined_score=1.508)
-        'bert-base-uncased': 2e-5,  # Essay optimized: 2e-5 (joint pipeline, combined_score=1.465)
-    }
-    return lr_rate_dt.get(model_name)
+    try:
+        from cbm.utils.lr_loader import load_learning_rates
+        lr_dict = load_learning_rates(dataset)
+        
+        if model_name in lr_dict:
+            return lr_dict[model_name]
+        else:
+            print(f"⚠️  Warning: No learning rate found for model '{model_name}' in {dataset}_lr_rate.csv")
+            return None
+    except FileNotFoundError:
+        print(f"⚠️  Warning: Learning rate file not found for dataset '{dataset}'")
+        print(f"   Please run: cd cbm && python get_learning_rate.py --dataset {dataset}")
+        return None
+    except Exception as e:
+        print(f"⚠️  Warning: Error loading learning rates: {e}")
+        return None
 
 
 def run_experiments_for_function(func_name: str, func):
@@ -98,13 +111,27 @@ def run_experiments_for_function(func_name: str, func):
                 ('pure', 'D'),      # original CEBaB
                 ('aug', 'D^'),      # aug_cebab
             ]
-        else:
+        elif dataset == 'imdb':
             # For IMDB, map manual->D and gen->D^
             variant_plan = [('manual', 'D'), ('gen', 'D^')]
+        else:
+            # For essay and qa, single variant
+            variant_plan = [(None, 'D')]
 
         for model_name in MODELS:
-            lr = get_learning_rate(model_name)
-            print(f"\t\tRunning {model_name}... with learning rate: {lr}")
+            lr = get_learning_rate(model_name, dataset)
+            if lr is None:
+                # Fallback to default learning rates
+                default_lrs = {
+                    'lstm': 1e-3,
+                    'gpt2': 1e-4,
+                    'roberta-base': 1e-5,
+                    'bert-base-uncased': 1e-5,
+                }
+                lr = default_lrs.get(model_name, 1e-5)
+                print(f"\t\tRunning {model_name}... with fallback learning rate: {lr}")
+            else:
+                print(f"\t\tRunning {model_name}... with learning rate: {lr}")
 
             for variant, data_type in variant_plan:
                 # CBE-PLMs-CM supports LSTM, just not on D variants
