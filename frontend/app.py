@@ -21,6 +21,18 @@ st.set_page_config(
 AVAILABLE_MODELS = ["bert-base-uncased", "gpt2", "roberta-base", "lstm"]
 AVAILABLE_MODES = ["standard", "joint"]
 
+# Concept name mapping
+CONCEPT_FULL_NAMES = {
+    "FC": "Focus/Clarity",
+    "CC": "Coherence/Cohesion", 
+    "TU": "Task Understanding",
+    "CP": "Critical Thinking",
+    "R": "Relevance",
+    "DU": "Depth/Understanding",
+    "EE": "Evidence/Examples",
+    "FR": "Flow/Readability"
+}
+
 
 def check_backend_connection(base_url: str) -> Dict[str, Any]:
     """Check if backend is accessible and get status."""
@@ -64,19 +76,7 @@ def predict_single_text(base_url: str, text: str, model_name: str, mode: str) ->
         return None
 
 
-def display_star_rating(rating: int) -> str:
-    """Display star rating with emojis."""
-    stars = "⭐" * rating + "☆" * (5 - rating)
-    return f"{stars} ({rating}/5)"
 
-def format_prediction_label(prediction: int, num_classes: int) -> str:
-    """Format prediction label based on number of classes."""
-    if num_classes == 2:
-        return "Correct Answer" if prediction == 1 else "Incorrect Answer"
-    elif num_classes == 6:
-        return f"Score: {prediction + 1}/6"  # Essay scoring (0-5 -> 1-6)
-    else:
-        return f"{prediction + 1} stars"
 
 def format_prediction_icon(prediction: int, num_classes: int) -> str:
     """Format prediction icon based on number of classes."""
@@ -86,6 +86,147 @@ def format_prediction_icon(prediction: int, num_classes: int) -> str:
         return "📝" + "⭐" * (prediction + 1)  # Essay scoring with stars
     else:
         return "⭐" * (prediction + 1)
+
+
+def display_rating_highlight(rating: int, num_classes: int, confidence: float):
+    """Display rating as large prominent text with confidence."""
+    max_rating = num_classes
+    confidence_pct = confidence * 100
+    
+    # Create prominent display
+    st.markdown("### 🎯 Prediction Result")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        st.markdown(f"## Rating: **{rating}/{max_rating}**")
+        st.markdown(f"**{format_prediction_icon(rating-1, num_classes)}**")
+    
+    with col2:
+        st.metric("Confidence", f"{confidence_pct:.1f}%")
+    
+    with col3:
+        st.metric("Max Score", max_rating)
+
+
+def display_probability_chart(probabilities: list, rating: int, num_classes: int, confidence: float):
+    """Create 2:8 column layout with rating info on left and horizontal bar chart on right."""
+    st.markdown("### 📊 Probability Distribution")
+    
+    # Create 2:8 column layout
+    col1, col2 = st.columns([2, 8])
+    
+    with col1:
+        st.markdown("**Rating Summary**")
+        st.metric("Predicted Rating", f"{rating}/{num_classes}")
+        st.metric("Confidence", f"{confidence*100:.1f}%")
+        st.metric("Max Score", num_classes)
+        
+        # Show highest probability info
+        max_prob_idx = probabilities.index(max(probabilities))
+        st.markdown(f"**Highest:** Score {max_prob_idx + 1}")
+        st.markdown(f"**Probability:** {max(probabilities)*100:.1f}%")
+    
+    with col2:
+        # Create horizontal bar chart
+        data = {
+            'Score': [f"{i+1}" for i in range(len(probabilities))],
+            'Probability': probabilities
+        }
+        
+        df = pd.DataFrame(data)
+        df = df.set_index('Score')
+        
+        # Display horizontal bar chart
+        st.bar_chart(df, height=300)
+
+
+def display_concept_cards(concept_predictions: list):
+    """Display 8 concept cards in 4 rows x 2 columns with prominent borders and color coding."""
+    if not concept_predictions:
+        return
+        
+    st.markdown("### 🎯 Concept Analysis")
+    
+    # Color mapping for icons only
+    color_styles = {
+        "Negative": {
+            "icon": "🔴"
+        },
+        "Neutral": {
+            "icon": "🟡"
+        },
+        "Positive": {
+            "icon": "🟢"
+        }
+    }
+    
+    # Display cards in 2 rows, 4 cards per row
+    for row in range(2):
+        cols = st.columns(4)
+        
+        for col_idx in range(4):
+            concept_idx = row * 4 + col_idx
+            if concept_idx < len(concept_predictions):
+                concept = concept_predictions[concept_idx]
+                
+                with cols[col_idx]:
+                    # Get concept info
+                    full_name = CONCEPT_FULL_NAMES.get(concept['concept_name'], concept['concept_name'])
+                    prediction = concept['prediction']
+                    probs = concept['probabilities']
+                    
+                    # Get styling
+                    style = color_styles.get(prediction, color_styles["Neutral"])
+                    
+                    # Get top probability info
+                    top_prob = max(probs.values())
+                    top_sentiment = max(probs, key=probs.get)
+                    
+                    # Create simple card without borders
+                    card_html = f"""
+                    <div style="
+                        padding: 15px;
+                        margin: 10px 0;
+                        border-radius: 5px;
+                        background-color: #f8f9fa;
+                    ">
+                        <h4 style="margin: 0 0 10px 0; color: #333;">
+                            {style['icon']} {full_name}
+                        </h4>
+                        <p style="margin: 5px 0; color: #333;">
+                            <strong>Prediction:</strong> {prediction}
+                        </p>
+                        <p style="margin: 5px 0; color: #666; font-size: 12px;">
+                            <strong>Top:</strong> {top_sentiment} ({top_prob*100:.1f}%)
+                        </p>
+                    </div>
+                    """
+                    
+                    st.markdown(card_html, unsafe_allow_html=True)
+                    
+                    # Add bar chart inside the card
+                    concept_data = {
+                        'Sentiment': list(probs.keys()),
+                        'Probability': list(probs.values())
+                    }
+                    
+                    concept_df = pd.DataFrame(concept_data)
+                    concept_df = concept_df.set_index('Sentiment')
+                    
+                    # Display horizontal bar chart with smaller height
+                    st.bar_chart(concept_df, height=150)
+                    
+                    # Add probability details below chart
+                    st.markdown(f"""
+                    <div style="margin-top: 5px;">
+                        <small style="color: #888;">
+                            Negative: {probs['Negative']*100:.1f}% | 
+                            Neutral: {probs['Neutral']*100:.1f}% | 
+                            Positive: {probs['Positive']*100:.1f}%
+                        </small>
+                    </div>
+                    """, unsafe_allow_html=True)
 
 
 def main():
@@ -164,23 +305,23 @@ def main():
             if result:
                 st.success("✅ Prediction completed!")
                 
-                # Display raw results for testing
-                st.markdown("### 📋 Raw Model Results")
-                st.json(result)
-                
-                # Get number of classes for concept predictions
+                # Get number of classes and confidence
                 num_classes = len(result['probabilities'])
+                max_probability = max(result['probabilities'])
                 
-                # Display concept predictions if available
+                # 1. Prediction Summary (prominent)
+                display_rating_highlight(result['rating'], num_classes, max_probability)
+                
+                # 2. Probability Distribution
+                display_probability_chart(result['probabilities'], result['rating'], num_classes, max_probability)
+                
+                # 3. Concept Analysis (only for joint mode)
                 if result.get("concept_predictions"):
-                    st.markdown("### 🎯 Concept Predictions")
-                    st.write(f"Number of concepts: {len(result['concept_predictions'])}")
-                    for i, concept in enumerate(result["concept_predictions"]):
-                        st.write(f"**{i+1}. {concept['concept_name']}**: {concept['prediction']}")
-                        st.write(f"   Probabilities: {concept['probabilities']}")
-                else:
-                    st.markdown("### 🎯 Concept Predictions")
-                    st.write("No concept predictions available")
+                    display_concept_cards(result["concept_predictions"])
+                
+                # 4. Raw Model Results (collapsible at bottom)
+                with st.expander("📋 Raw Model Results", expanded=False):
+                    st.json(result)
     
     with tab2:
         st.header("Backend Status")
