@@ -11,9 +11,8 @@ from pathlib import Path
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
-sys.path.append(str(project_root / "examples"))
 
-from examples.model_loader import load_model_and_tokenizer
+from cbm.models.loaders import load_model_and_tokenizer
 
 
 class ModelManager:
