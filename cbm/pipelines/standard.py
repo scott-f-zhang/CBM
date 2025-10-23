@@ -85,14 +85,12 @@ def get_cbm_standard(
     model.to(device)
     head.to(device)
 
-    # Prepare save directories: <project_root>/saved_models/original/<model_name>/ and <project_root>/saved_models/portable/<model_name>/
+    # Prepare save directory: <project_root>/saved_models/<dataset>/
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    original_dir = os.path.join(PROJECT_ROOT, "saved_models", "original", cfg.model_name)
-    portable_dir = os.path.join(PROJECT_ROOT, "saved_models", "portable", cfg.model_name)
-    os.makedirs(original_dir, exist_ok=True)
-    os.makedirs(portable_dir, exist_ok=True)
-    model_path = os.path.join(original_dir, f"{cfg.model_name}_model_standard.pth")
-    head_path = os.path.join(original_dir, f"{cfg.model_name}_classifier_standard.pth")
+    save_dir = os.path.join(PROJECT_ROOT, "saved_models", cfg.dataset)
+    os.makedirs(save_dir, exist_ok=True)
+    model_path = os.path.join(save_dir, f"{cfg.model_name}_model_standard.pth")
+    head_path = os.path.join(save_dir, f"{cfg.model_name}_classifier_standard.pth")
 
     optimizer = torch.optim.Adam(list(model.parameters()) + list(head.parameters()), lr=(cfg.optimizer_lr if cfg.optimizer_lr is not None else (1e-2 if cfg.model_name == 'lstm' else 1e-5)))
     if scheduler_needed:
@@ -112,12 +110,9 @@ def get_cbm_standard(
         if val_acc > best_acc:
             best_acc = val_acc
             patience_counter = 0  # Reset patience counter
-            # Save original: full pickled objects (.pth)
+            # Save full pickled objects (.pth)
             torch.save(head, head_path)
             torch.save(model, model_path)
-            # Save portable: state dicts only (.pt)
-            torch.save(head.state_dict(), os.path.join(portable_dir, f"{cfg.model_name}_classifier_standard.pt"))
-            torch.save(model.state_dict(), os.path.join(portable_dir, f"{cfg.model_name}_model_standard.pt"))
             print(f"  -> New best validation accuracy: {best_acc*100:.2f}%")
         else:
             patience_counter += 1
@@ -134,9 +129,7 @@ def get_cbm_standard(
     model.to(device)
     head.to(device)
     
-    # Example: Load portable state_dict version
-    # model.load_state_dict(torch.load(os.path.join(portable_dir, f"{cfg.model_name}_model_standard.pt")))
-    # head.load_state_dict(torch.load(os.path.join(portable_dir, f"{cfg.model_name}_classifier_standard.pt")))
+    # Portable state_dict saving has been removed per project requirements.
 
     scores = test_loop(model, head, test_loader, device, cfg.model_name == 'lstm')
     return scores

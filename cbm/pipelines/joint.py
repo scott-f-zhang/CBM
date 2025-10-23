@@ -91,14 +91,12 @@ def get_cbm_joint(
     model.to(device)
     head.to(device)
 
-    # Prepare save directories: <project_root>/saved_models/original/<model_name>/ and <project_root>/saved_models/portable/<model_name>/
+    # Prepare save directory: <project_root>/saved_models/<dataset>/
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    original_dir = os.path.join(PROJECT_ROOT, "saved_models", "original", cfg.model_name)
-    portable_dir = os.path.join(PROJECT_ROOT, "saved_models", "portable", cfg.model_name)
-    os.makedirs(original_dir, exist_ok=True)
-    os.makedirs(portable_dir, exist_ok=True)
-    model_path = os.path.join(original_dir, f"{cfg.model_name}_joint.pth")
-    head_path = os.path.join(original_dir, f"{cfg.model_name}_ModelXtoCtoY_layer_joint.pth")
+    save_dir = os.path.join(PROJECT_ROOT, "saved_models", cfg.dataset)
+    os.makedirs(save_dir, exist_ok=True)
+    model_path = os.path.join(save_dir, f"{cfg.model_name}_joint.pth")
+    head_path = os.path.join(save_dir, f"{cfg.model_name}_ModelXtoCtoY_layer_joint.pth")
 
     default_lr = 1e-2 if cfg.model_name == 'lstm' else 1e-5
     optimizer = torch.optim.Adam(list(model.parameters()) + list(head.parameters()), lr=(cfg.optimizer_lr if cfg.optimizer_lr is not None else default_lr))
@@ -131,12 +129,9 @@ def get_cbm_joint(
         if metrics['val_acc'] > best_acc:
             best_acc = metrics['val_acc']
             patience_counter = 0  # Reset patience counter
-            # Save original: full pickled objects (.pth)
+            # Save full pickled objects (.pth)
             torch.save(model, model_path)
             torch.save(head, head_path)
-            # Save portable: state dicts only (.pt)
-            torch.save(model.state_dict(), os.path.join(portable_dir, f"{cfg.model_name}_joint.pt"))
-            torch.save(head.state_dict(), os.path.join(portable_dir, f"{cfg.model_name}_ModelXtoCtoY_layer_joint.pt"))
             print(f"  -> New best validation accuracy: {best_acc*100:.2f}%")
         else:
             patience_counter += 1
@@ -156,10 +151,6 @@ def get_cbm_joint(
     model.to(device)
     head.to(device)
     
-    # Example: Load portable state_dict version
-    # model.load_state_dict(torch.load(os.path.join(portable_dir, f"{cfg.model_name}_joint.pt")))
-    # head.load_state_dict(torch.load(os.path.join(portable_dir, f"{cfg.model_name}_ModelXtoCtoY_layer_joint.pt")))
-
     test_acc, test_macro_f1, concept_acc, concept_macro_f1 = test_epoch_joint(model, head, test_loader, device, cfg.model_name == 'lstm')
     print(f"Epoch 1: Test Acc = {test_acc*100} Test Macro F1 = {test_macro_f1*100}")
     return {

@@ -58,8 +58,8 @@ BASE_RUN = RunConfig(
 DATASETS = ["essay"]  # choose from: "cebab", "imdb", "essay", "qa"
 MODELS = ["bert-base-uncased", "roberta-base"]
 
-# Output CSV path
-OUTPUT_CSV = os.path.join(MAIN_DIR, "result_essay.csv")
+# Results root path (per dataset CSVs will be written under this)
+RESULTS_ROOT = os.path.join(ROOT_DIR, "results")
 
 
 from typing import Optional
@@ -207,8 +207,14 @@ def run_all_experiments() -> pd.DataFrame:
 def main():
     """Entrypoint: run experiments, save CSV, and print CEBaB D/D^ and IMDB pivots."""
     df = run_all_experiments()
-    df.to_csv(OUTPUT_CSV, index=False)
-    print(f"\nSaved results to: {OUTPUT_CSV}")
+    os.makedirs(RESULTS_ROOT, exist_ok=True)
+    # Save per-dataset results CSVs
+    for dataset, ddf in df.groupby("dataset"):
+        out_dir = os.path.join(RESULTS_ROOT, dataset)
+        os.makedirs(out_dir, exist_ok=True)
+        out_file = os.path.join(out_dir, f"result_{dataset}.csv")
+        ddf.to_csv(out_file, index=False)
+        print(f"\nSaved results to: {out_file}")
 
 if __name__ == "__main__":
     main()

@@ -16,6 +16,26 @@ from models import (
 )
 from model_manager import model_manager
 from inference import predict_single, evaluate_batch
+from pathlib import Path
+
+# =========================
+# Manual configuration
+# =========================
+# Select which dataset's models to use (matches folder under `saved_models/`)
+CBM_DATASET = "essay"  # e.g., "essay", "imdb", "cebab"
+
+# Make dataset selection visible to the model loader
+os.environ["CBM_DATASET"] = CBM_DATASET
+
+# Project root and model discovery
+PROJECT_ROOT = Path(__file__).parent.parent
+
+def discover_available_models(dataset: str) -> List[str]:
+    base_dir = PROJECT_ROOT / "saved_models" / dataset
+    if not base_dir.exists():
+        return []
+    return sorted([p.name for p in base_dir.iterdir() if p.is_dir()])
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -34,7 +54,7 @@ app.add_middleware(
 )
 
 # Available models and modes
-AVAILABLE_MODELS = ["bert-base-uncased", "gpt2", "roberta-base", "lstm"]
+AVAILABLE_MODELS = discover_available_models(CBM_DATASET)
 AVAILABLE_MODES = ["standard", "joint"]
 
 

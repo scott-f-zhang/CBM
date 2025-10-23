@@ -208,7 +208,11 @@ __marimo__/
 cbm/*.pth
 
 .DS_Store
-saved_models/original/
-saved_models/portable/
-saved_models/original/*
-saved_models/portable/*
+saved_models/essay/
+saved_models/essay/*
+saved_models/cebab/
+saved_models/cebab/*
+saved_models/imdb/
+saved_models/imdb/*
+saved_models/qa/
+saved_models/qa/*

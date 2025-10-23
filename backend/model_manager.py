@@ -63,9 +63,23 @@ class ModelManager:
         else:
             raise ValueError(f"Unsupported mode: {mode}")
         
-        # Load from saved_models directory
-        model_path = project_root / "saved_models" / "original" / model_name / model_file
-        head_path = project_root / "saved_models" / "original" / model_name / head_file
+        # Load from saved_models/<dataset>/<model_name> directory
+        dataset_name = os.getenv("CBM_DATASET", "essay")
+        base_dir = project_root / "saved_models" / dataset_name / model_name
+
+        # Fallback: auto-discover dataset directory that contains this model if default doesn't exist
+        if not base_dir.exists():
+            saved_models_root = project_root / "saved_models"
+            if saved_models_root.exists():
+                for possible_dataset_dir in saved_models_root.iterdir():
+                    if possible_dataset_dir.is_dir():
+                        candidate_dir = possible_dataset_dir / model_name
+                        if candidate_dir.exists():
+                            base_dir = candidate_dir
+                            break
+
+        model_path = base_dir / model_file
+        head_path = base_dir / head_file
         
         if not model_path.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")
