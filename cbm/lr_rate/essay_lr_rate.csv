@@ -1,5 +1,3 @@
 model,best_lr
-bert-base-uncased,2e-05
-roberta-base,2e-05
-gpt2,5e-05
-lstm,0.0005
+bert-base-uncased,1e-05
+roberta-base,1e-05

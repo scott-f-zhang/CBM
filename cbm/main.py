@@ -75,22 +75,21 @@ def get_learning_rate(model_name: str, dataset: str) -> Optional[float]:
     Returns:
         Learning rate or None (if not found)
     """
-    print(f"🔍 Looking for learning rate for model '{model_name}' and dataset '{dataset}'...")
-    
     try:
         from cbm.utils.lr_loader import load_learning_rates
         lr_dict = load_learning_rates(dataset)
         
         if model_name in lr_dict:
-            lr_value = lr_dict[model_name]
-            print(f"✅ Found learning rate: {model_name} -> {lr_value}")
-            return lr_value
+            lr = lr_dict[model_name]
+            print(f"✓ Successfully loaded learning rate for {model_name}: {lr}")
+            return lr
         else:
             print(f"⚠️  Warning: No learning rate found for model '{model_name}' in {dataset}_lr_rate.csv")
             print(f"   Available models: {list(lr_dict.keys())}")
             return None
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         print(f"⚠️  Warning: Learning rate file not found for dataset '{dataset}'")
+        print(f"   File path: {e}")
         print(f"   Please run: cd cbm && python get_learning_rate.py --dataset {dataset}")
         return None
     except Exception as e:
@@ -271,12 +270,12 @@ def build_pivot_table(df: pd.DataFrame) -> pd.DataFrame:
 def main():
     """Entrypoint: run experiments, save CSV, and print CEBaB D/D^ and IMDB pivots."""
     df = run_all_experiments()
-    df, dfp = build_pivot_table(df)
+    # df, dfp = build_pivot_table(df)
     df.to_csv(OUTPUT_CSV, index=False)
-
-    print("\nUnified Pivot (dataset, D/D^, task/concept):")
-    print(dfp)
     print(f"\nSaved results to: {OUTPUT_CSV}")
+
+    # print("\nUnified Pivot (dataset, D/D^, task/concept):")
+    # print(dfp)
 
 
 if __name__ == "__main__":

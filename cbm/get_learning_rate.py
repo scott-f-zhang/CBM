@@ -28,11 +28,11 @@ MODEL_CONFIG = {
         'lr_candidates': [1e-5, 3e-5, 5e-5, 1e-4, 5e-4],  # Sorted by value
     },
     'gpt2': {
-        'enabled': True,
+        'enabled': False,
         'lr_candidates': [1e-5, 5e-4, 1e-4, 5e-3, 1e-3],  # Sorted by value
     },
     'lstm': {
-        'enabled': True,
+        'enabled': False,
         'lr_candidates': [1e-4, 1e-3, 1e-2, 5e-2, 1e-1],  # Sorted by value
     },
     'roberta-base': {
