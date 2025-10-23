@@ -39,6 +39,12 @@ class QADataset(Dataset):
         self.tokenizer = tokenizer
         self.max_len = max_len
 
+        # Dataset metadata
+        self.final_label = ['score']
+        self.final_label_vals = [0, 1, 2, 3, 4, 5]
+        self.concepts = ['FC', 'CC', 'TU', 'CP', 'R', 'DU', 'EE', 'FR']
+        self.concept_vals = [0, 1, 2]
+
         # Resolve repo root and dataset directory to avoid CWD dependence
         SELF_DIR = os.path.dirname(os.path.abspath(__file__))
         MAIN_DIR = os.path.dirname(SELF_DIR)
@@ -79,9 +85,9 @@ class QADataset(Dataset):
         self.labels = df["label"].astype(int)
 
         # Use concept values directly as they are already numeric
-        self.concepts = {}
+        self.concept_data = {}
         for c in QA_CONCEPT_COLUMNS:
-            self.concepts[c] = df[c].astype(int)
+            self.concept_data[c] = df[c].astype(int)
 
         # Keep all rows
         self.indices = list(range(len(self.labels)))
@@ -95,7 +101,7 @@ class QADataset(Dataset):
         label = int(self.labels[i])
 
         # Build concept label vector in fixed order
-        concept_values = [int(self.concepts[c][i]) for c in QA_CONCEPT_COLUMNS]
+        concept_values = [int(self.concept_data[c][i]) for c in QA_CONCEPT_COLUMNS]
 
         enc = self.tokenizer.encode_plus(
             str(text), add_special_tokens=True, max_length=self.max_len,

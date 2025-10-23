@@ -6,6 +6,8 @@ import streamlit as st
 import requests
 import pandas as pd
 import json
+import os
+import glob
 from typing import Dict, Any, Optional
 
 
@@ -17,9 +19,27 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Available models and modes
-AVAILABLE_MODELS = ["bert-base-uncased", "gpt2", "roberta-base", "lstm"]
+# Available modes
 AVAILABLE_MODES = ["standard", "joint"]
+
+def get_available_models_from_filesystem() -> list:
+    """Dynamically get available models from saved_models/original directory."""
+    models_dir = "/Users/scott/repos/CBM/saved_models/original"
+    if not os.path.exists(models_dir):
+        return ["bert-base-uncased", "roberta-base"]  # fallback
+    
+    # Get all directories in the models folder
+    model_dirs = [d for d in os.listdir(models_dir) 
+                  if os.path.isdir(os.path.join(models_dir, d))]
+    
+    # Filter out hidden directories and sort
+    model_dirs = [d for d in model_dirs if not d.startswith('.')]
+    model_dirs.sort()
+    
+    return model_dirs if model_dirs else ["bert-base-uncased", "roberta-base"]  # fallback
+
+# Get available models dynamically
+AVAILABLE_MODELS = get_available_models_from_filesystem()
 
 # Concept name mapping
 CONCEPT_FULL_NAMES = {

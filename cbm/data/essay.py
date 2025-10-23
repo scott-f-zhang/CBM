@@ -39,6 +39,12 @@ class EssayDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_len = max_len
 
+        # Dataset metadata
+        self.final_label = ['score']
+        self.final_label_vals = [0, 1, 2, 3, 4, 5]
+        self.concepts = ['TC', 'UE', 'OC', 'GM', 'VA', 'SV', 'CTD', 'FR']
+        self.concept_vals = [0, 1, 2, 3, 4]
+
         # Resolve repo root and dataset directory to avoid CWD dependence
         SELF_DIR = os.path.dirname(os.path.abspath(__file__))
         MAIN_DIR = os.path.dirname(SELF_DIR)

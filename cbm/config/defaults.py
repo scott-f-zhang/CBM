@@ -14,7 +14,7 @@ class RunConfig:
     # 'cebab' | 'imdb' | 'essay' | 'qa'
     dataset: str = "cebab"
     # Enable early stopping during training
-    early_stopping: bool = True
+    early_stopping: bool = False
 
     # unified variant:
     # cebab: 'pure'|'aug'|'aug_yelp'|'aug_both'
