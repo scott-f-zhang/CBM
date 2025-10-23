@@ -129,10 +129,17 @@ def predict_joint(model: torch.nn.Module, head: torch.nn.Module, tokenizer, text
                 concept_probabilities = torch.softmax(XtoC_logits, dim=-1).cpu().numpy()
                 concept_predictions = torch.argmax(XtoC_logits, dim=-1).cpu().numpy()
                 
-                # Reshape for per-concept results
+                # Get dataset configuration from head
                 num_concepts = len(XtoC_output)
+                if hasattr(head, 'dataset_config') and 'concept_vals' in head.dataset_config:
+                    num_classes_per_concept = len(head.dataset_config['concept_vals'])
+                else:
+                    # Fallback: assume 3 classes per concept (most common case)
+                    num_classes_per_concept = 3
+                
+                # Reshape for per-concept results using dynamic class count
                 concept_predictions = concept_predictions.reshape(num_concepts, -1)[:, 0]
-                concept_probs = concept_probabilities.reshape(num_concepts, -1, 3)[:, 0, :]
+                concept_probs = concept_probabilities.reshape(num_concepts, -1, num_classes_per_concept)[:, 0, :]
                 
                 # Convert to Python ints for JSON serialization
                 concept_predictions = [int(pred) for pred in concept_predictions]
@@ -201,30 +208,48 @@ def predict_single(text: str, model_name: str, mode: str) -> Dict[str, Any]:
     elif mode == 'joint':
         task_pred, task_probs, concept_preds, concept_probs = predict_joint(model, head, tokenizer, text)
         
-        # Format concept predictions based on dataset type
-        if len(task_probs) == 2:  # Binary classification
-            concept_names = ['FC', 'CC', 'TU', 'CP', 'R', 'DU', 'EE', 'FR']
-        elif len(task_probs) == 6:  # Essay dataset (6-class: 0-5 scoring)
-            concept_names = ['FC', 'CC', 'TU', 'CP', 'R', 'DU', 'EE', 'FR']
-        else:  # Restaurant dataset (5-class)
-            concept_names = ['Food', 'Ambiance', 'Service', 'Noise']
+        # Get concept names and labels from dataset configuration
+        if hasattr(head, 'dataset_config'):
+            concept_names = head.dataset_config.get('concepts', ['TC', 'UE', 'OC', 'GM', 'VA', 'SV', 'CTD', 'FR'])
+            concept_vals = head.dataset_config.get('concept_vals', [0, 1, 2, 3, 4])
+        else:
+            # Fallback based on task output size
+            if len(task_probs) == 2:  # Binary classification
+                concept_names = ['FC', 'CC', 'TU', 'CP', 'R', 'DU', 'EE', 'FR']
+                concept_vals = [0, 1, 2]
+            elif len(task_probs) == 6:  # Essay dataset (6-class: 0-5 scoring)
+                concept_names = ['TC', 'UE', 'OC', 'GM', 'VA', 'SV', 'CTD', 'FR']
+                concept_vals = [0, 1, 2, 3, 4]
+            else:  # Restaurant dataset (5-class)
+                concept_names = ['Food', 'Ambiance', 'Service', 'Noise']
+                concept_vals = [0, 1, 2]
         
-        sentiment_map = ['Negative', 'Neutral', 'Positive']
+        # Create label mapping based on concept_vals
+        if len(concept_vals) == 3:
+            sentiment_map = ['Negative', 'Neutral', 'Positive']
+        elif len(concept_vals) == 5:
+            sentiment_map = ['1', '2', '3', '4', '5']
+        else:
+            # Generic mapping for other cases
+            sentiment_map = [f'Class_{i}' for i in concept_vals]
         
         concept_predictions = []
         for i, name in enumerate(concept_names):
             if i < len(concept_preds):  # Ensure we don't exceed available predictions
                 pred = concept_preds[i]
-                sentiment = sentiment_map[pred]
+                sentiment = sentiment_map[pred] if pred < len(sentiment_map) else f'Class_{pred}'
                 probs = concept_probs[i]
+                
+                # Create probabilities dictionary dynamically
+                prob_dict = {}
+                for j, label in enumerate(sentiment_map):
+                    if j < len(probs):
+                        prob_dict[label] = probs[j]
+                
                 concept_predictions.append({
                     'concept_name': name,
                     'prediction': sentiment,
-                    'probabilities': {
-                        'Negative': probs[0],
-                        'Neutral': probs[1],
-                        'Positive': probs[2]
-                    }
+                    'probabilities': prob_dict
                 })
         
         # Determine rating based on number of classes

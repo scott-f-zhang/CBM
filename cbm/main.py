@@ -66,23 +66,28 @@ from typing import Optional
 
 
 def get_learning_rate(model_name: str, dataset: str) -> Optional[float]:
-    """从 cbm/lr_rate/<dataset>_lr_rate.csv 加载学习率配置
+    """Load learning rate configuration from cbm/lr_rate/<dataset>_lr_rate.csv
     
     Args:
-        model_name: 模型名称
-        dataset: 数据集名称
+        model_name: Model name
+        dataset: Dataset name
     
     Returns:
-        学习率或 None（如果找不到）
+        Learning rate or None (if not found)
     """
+    print(f"🔍 Looking for learning rate for model '{model_name}' and dataset '{dataset}'...")
+    
     try:
         from cbm.utils.lr_loader import load_learning_rates
         lr_dict = load_learning_rates(dataset)
         
         if model_name in lr_dict:
-            return lr_dict[model_name]
+            lr_value = lr_dict[model_name]
+            print(f"✅ Found learning rate: {model_name} -> {lr_value}")
+            return lr_value
         else:
             print(f"⚠️  Warning: No learning rate found for model '{model_name}' in {dataset}_lr_rate.csv")
+            print(f"   Available models: {list(lr_dict.keys())}")
             return None
     except FileNotFoundError:
         print(f"⚠️  Warning: Learning rate file not found for dataset '{dataset}'")

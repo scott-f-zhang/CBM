@@ -40,27 +40,27 @@ def get_cbm_standard(
         train_ds = IMDBDataset("train", tokenizer, cfg.max_len, variant=cfg.variant)
         val_ds = IMDBDataset("val", tokenizer, cfg.max_len, variant=cfg.variant)
         test_ds = IMDBDataset("test", tokenizer, cfg.max_len, variant=cfg.variant)
-        num_labels = 2
-        num_concept_labels = 8 if getattr(train_ds, "extra", None) is not None else 4
+        num_labels = len(train_ds.final_label_vals)
+        num_concept_labels = len(train_ds.concepts)
     elif cfg.dataset == 'essay':
         train_ds = EssayDataset("train", tokenizer, cfg.max_len)
         val_ds = EssayDataset("val", tokenizer, cfg.max_len)
         test_ds = EssayDataset("test", tokenizer, cfg.max_len)
-        num_labels = 6  # Essay: 0-5 score classification (6 classes)
-        num_concept_labels = 8  # Essay concepts: 8 concept columns
+        num_labels = len(train_ds.final_label_vals)
+        num_concept_labels = len(train_ds.concepts)
     elif cfg.dataset == 'qa':
         train_ds = QADataset("train", tokenizer, cfg.max_len)
         val_ds = QADataset("val", tokenizer, cfg.max_len)
         test_ds = QADataset("test", tokenizer, cfg.max_len)
-        num_labels = 6  # QA: 0-5 score classification (6 classes)
-        num_concept_labels = 8  # QA concepts: 8 concept columns
+        num_labels = len(train_ds.final_label_vals)
+        num_concept_labels = len(train_ds.concepts)
     else:
         # cebab
         train_ds = CEBaBDataset("train", tokenizer, cfg.max_len, variant=cfg.variant, expand_concepts=None)
         val_ds = CEBaBDataset("val", tokenizer, cfg.max_len, variant=cfg.variant, expand_concepts=None)
         test_ds = CEBaBDataset("test", tokenizer, cfg.max_len, variant=cfg.variant, expand_concepts=None)
-        num_labels = 5
-        num_concept_labels = 10 if getattr(train_ds, "extra", None) is not None else 4
+        num_labels = len(train_ds.final_label_vals)
+        num_concept_labels = len(train_ds.concepts)
 
     train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=cfg.batch_size)

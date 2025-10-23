@@ -9,6 +9,12 @@ QA_CONCEPT_COLUMNS: List[str] = [
     "FC", "CC", "TU", "CP", "R", "DU", "EE", "FR"
 ]
 
+# Dataset metadata
+final_label = ['score']
+final_label_vals = [0, 1, 2, 3, 4, 5]
+concepts = ['FC', 'CC', 'TU', 'CP', 'R', 'DU', 'EE', 'FR']
+concept_vals = [0, 1, 2]
+
 
 class QADataset(Dataset):
     """Dataset wrapper for QA data prepared as CSVs with columns:

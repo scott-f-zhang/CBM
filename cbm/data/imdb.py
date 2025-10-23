@@ -97,6 +97,18 @@ class IMDBDataset(Dataset):
         self.max_len = max_len
         self.variant = variant
         self.expand_concepts = expand_concepts
+        
+        # Dataset metadata
+        self.final_label = ['sentiment']
+        self.final_label_vals = [0, 1]
+        self.concept_vals = [0, 1, 2]
+        
+        # Set concepts based on whether extra concepts are available
+        if self.extra is not None:
+            self.concepts = ['acting', 'storyline', 'emotional', 'cinematography', 
+                           'soundtrack', 'directing', 'background', 'editing']
+        else:
+            self.concepts = ['acting', 'storyline', 'emotional', 'cinematography']
 
         # Keep all rows; no 'no majority' filtering used here
         self.indices = list(range(len(self.labels)))

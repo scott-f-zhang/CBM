@@ -83,6 +83,18 @@ class CEBaBDataset(Dataset):
 
         self.map_dict = {"Negative": 0, "Positive": 1, "unknown": 2, "": 2, "no majority": 2}
 
+        # Dataset metadata
+        self.final_label = ['review']
+        self.final_label_vals = [0, 1, 2, 3, 4]
+        self.concept_vals = [0, 1, 2]
+        
+        # Set concepts based on whether extra concepts are available
+        if self.extra is not None:
+            self.concepts = ['Food', 'Ambiance', 'Service', 'Noise', 
+                           'cleanliness', 'price', 'location', 'menu_variety', 'waiting_time', 'waiting_area']
+        else:
+            self.concepts = ['Food', 'Ambiance', 'Service', 'Noise']
+
         # skip rows with 'no majority' labels
         self.indices = [i for i, label in enumerate(self.labels) if label != "no majority"]
 

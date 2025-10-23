@@ -23,6 +23,7 @@ AVAILABLE_MODES = ["standard", "joint"]
 
 # Concept name mapping
 CONCEPT_FULL_NAMES = {
+    # QA Dataset concepts
     "FC": "Focus/Clarity",
     "CC": "Coherence/Cohesion", 
     "TU": "Task Understanding",
@@ -30,7 +31,39 @@ CONCEPT_FULL_NAMES = {
     "R": "Relevance",
     "DU": "Depth/Understanding",
     "EE": "Evidence/Examples",
-    "FR": "Flow/Readability"
+    "FR": "Flow/Readability",
+    
+    # Essay Dataset concepts
+    "TC": "Task Completion",
+    "UE": "Understanding/Explanation",
+    "OC": "Organization/Clarity",
+    "GM": "Grammar/Mechanics",
+    "VA": "Vocabulary/Accuracy",
+    "SV": "Support/Validation",
+    "CTD": "Critical Thinking/Depth",
+    "FR": "Flow/Readability",
+    
+    # CEBaB Dataset concepts
+    "Food": "Food Quality",
+    "Ambiance": "Ambiance/Atmosphere",
+    "Service": "Service Quality",
+    "Noise": "Noise Level",
+    "cleanliness": "Cleanliness",
+    "price": "Price/Value",
+    "location": "Location",
+    "menu_variety": "Menu Variety",
+    "waiting_time": "Waiting Time",
+    "waiting_area": "Waiting Area",
+    
+    # IMDB Dataset concepts
+    "acting": "Acting Performance",
+    "storyline": "Storyline/Plot",
+    "emotional": "Emotional Impact",
+    "cinematography": "Cinematography",
+    "soundtrack": "Soundtrack/Music",
+    "directing": "Directing",
+    "background": "Background Setting",
+    "editing": "Editing"
 }
 
 
@@ -148,18 +181,30 @@ def display_concept_cards(concept_predictions: list):
         
     st.markdown("### 🎯 Concept Analysis")
     
-    # Color mapping for icons only
-    color_styles = {
-        "Negative": {
-            "icon": "🔴"
-        },
-        "Neutral": {
-            "icon": "🟡"
-        },
-        "Positive": {
-            "icon": "🟢"
-        }
-    }
+    # Color mapping for icons - handle different sentiment labels dynamically
+    def get_icon_for_sentiment(sentiment: str) -> str:
+        """Get appropriate icon based on sentiment label."""
+        sentiment_lower = sentiment.lower()
+        
+        # Handle numeric labels (1-5 scale)
+        if sentiment.isdigit():
+            score = int(sentiment)
+            if score <= 2:
+                return "🔴"  # Low scores (1-2)
+            elif score == 3:
+                return "🟡"  # Medium score (3)
+            else:
+                return "🟢"  # High scores (4-5)
+        
+        # Handle text labels
+        if any(word in sentiment_lower for word in ['negative', 'low', 'very low']):
+            return "🔴"
+        elif any(word in sentiment_lower for word in ['neutral', 'medium']):
+            return "🟡"
+        elif any(word in sentiment_lower for word in ['positive', 'high', 'very high']):
+            return "🟢"
+        else:
+            return "⚪"  # Default for unknown labels
     
     # Display cards in 2 rows, 4 cards per row
     for row in range(2):
@@ -172,12 +217,13 @@ def display_concept_cards(concept_predictions: list):
                 
                 with cols[col_idx]:
                     # Get concept info
-                    full_name = CONCEPT_FULL_NAMES.get(concept['concept_name'], concept['concept_name'])
+                    concept_name = concept['concept_name']
+                    full_name = CONCEPT_FULL_NAMES.get(concept_name, concept_name)
                     prediction = concept['prediction']
                     probs = concept['probabilities']
                     
                     # Get styling
-                    style = color_styles.get(prediction, color_styles["Neutral"])
+                    icon = get_icon_for_sentiment(prediction)
                     
                     # Get top probability info
                     top_prob = max(probs.values())
@@ -191,9 +237,12 @@ def display_concept_cards(concept_predictions: list):
                         border-radius: 5px;
                         background-color: #f8f9fa;
                     ">
-                        <h4 style="margin: 0 0 10px 0; color: #333;">
-                            {style['icon']} {full_name}
+                        <h4 style="margin: 0 0 5px 0; color: #333;">
+                            {icon} {concept_name}
                         </h4>
+                        <p style="margin: 0 0 10px 0; color: #666; font-size: 12px;">
+                            {full_name}
+                        </p>
                         <p style="margin: 5px 0; color: #333;">
                             <strong>Prediction:</strong> {prediction}
                         </p>
@@ -218,12 +267,11 @@ def display_concept_cards(concept_predictions: list):
                     st.bar_chart(concept_df, height=150)
                     
                     # Add probability details below chart
+                    prob_text = " | ".join([f"{label}: {probs[label]*100:.1f}%" for label in probs.keys()])
                     st.markdown(f"""
                     <div style="margin-top: 5px;">
                         <small style="color: #888;">
-                            Negative: {probs['Negative']*100:.1f}% | 
-                            Neutral: {probs['Neutral']*100:.1f}% | 
-                            Positive: {probs['Positive']*100:.1f}%
+                            {prob_text}
                         </small>
                     </div>
                     """, unsafe_allow_html=True)

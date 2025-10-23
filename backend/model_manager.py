@@ -15,6 +15,25 @@ sys.path.append(str(project_root))
 from cbm.models.loaders import load_model_and_tokenizer
 
 
+def setup_module_aliases():
+    """Set up module aliases to redirect run_cebab imports to cbm.models."""
+    import cbm.models.template_models as template_models
+    import cbm.models.cbm_models as cbm_models
+    
+    # Create aliases in sys.modules
+    sys.modules['run_cebab'] = cbm_models
+    sys.modules['run_cebab.cbm_template_models'] = template_models
+    sys.modules['run_cebab.cbm_models'] = cbm_models
+
+
+def cleanup_module_aliases():
+    """Clean up module aliases after loading."""
+    aliases_to_remove = ['run_cebab', 'run_cebab.cbm_template_models', 'run_cebab.cbm_models']
+    for alias in aliases_to_remove:
+        if alias in sys.modules:
+            del sys.modules[alias]
+
+
 class ModelManager:
     """Singleton class for managing model loading and caching."""
     
@@ -54,9 +73,19 @@ class ModelManager:
             raise FileNotFoundError(f"Head file not found: {head_path}")
         
         try:
+            # Set up module aliases for run_cebab imports
+            setup_module_aliases()
+            
             # Load models with proper device mapping
             model = torch.load(model_path, weights_only=False, map_location=self.device)
             head = torch.load(head_path, weights_only=False, map_location=self.device)
+            
+            # Clean up module aliases
+            cleanup_module_aliases()
+            
+            # Move to device
+            model = model.to(self.device)
+            head = head.to(self.device)
             
             # Fix configuration compatibility issues
             if hasattr(model, 'config'):
@@ -70,10 +99,20 @@ class ModelManager:
                 if not hasattr(model.config, 'output_hidden_states'):
                     model.config.output_hidden_states = False
             
-            model.to(self.device)
-            head.to(self.device)
             model.eval()
             head.eval()
+            
+            # Attach dataset configuration to head for inference
+            if mode == 'joint':
+                # Determine dataset type based on head structure
+                # For now, assume Essay dataset (most common case)
+                # TODO: Make this more robust by detecting from model structure
+                head.dataset_config = {
+                    'final_label': ['score'],
+                    'final_label_vals': [0, 1, 2, 3, 4, 5],
+                    'concepts': ['TC', 'UE', 'OC', 'GM', 'VA', 'SV', 'CTD', 'FR'],
+                    'concept_vals': [0, 1, 2, 3, 4]
+                }
             
             return model, head
         except Exception as e:

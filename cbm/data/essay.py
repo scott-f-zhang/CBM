@@ -9,6 +9,12 @@ ESSAY_CONCEPT_COLUMNS: List[str] = [
     "TC", "UE", "OC", "GM", "VA", "SV", "CTD", "FR"
 ]
 
+# Dataset metadata
+final_label = ['score']
+final_label_vals = [0, 1, 2, 3, 4, 5]
+concepts = ['TC', 'UE', 'OC', 'GM', 'VA', 'SV', 'CTD', 'FR']
+concept_vals = [0, 1, 2, 3, 4]
+
 
 class EssayDataset(Dataset):
     """Dataset wrapper for essay data prepared as CSVs with columns:
