@@ -51,6 +51,7 @@ BASE_RUN = RunConfig(
     num_epochs=20,
     max_len=512,
     batch_size=8,
+    early_stopping=True,
 )
 
 # Which datasets and models to run
@@ -151,7 +152,7 @@ def run_experiments_for_function(func_name: str, func):
                         max_len=BASE_RUN.max_len,
                         batch_size=BASE_RUN.batch_size,
                         optimizer_lr=lr,
-                        early_stopping=False,
+                        early_stopping=BASE_RUN.early_stopping,
                     )
                     if variant is not None:
                         kwargs['variant'] = variant
@@ -192,7 +193,7 @@ def run_all_experiments() -> pd.DataFrame:
     plms_funcs = {
         'PLMs': get_cbm_standard,
         'CBE-PLMs': get_cbm_joint,
-        'CBE-PLMs-CM': get_cbm_LLM_mix_joint,
+        # 'CBE-PLMs-CM': get_cbm_LLM_mix_joint,
     }
     all_rows = []
 
@@ -203,80 +204,11 @@ def run_all_experiments() -> pd.DataFrame:
     return df
 
 
-def build_pivot_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Create pivot tables and formatted output.
-
-    - For CEBaB, pivot by data_type -> columns D and D^.
-    - For IMDB, keep a simple dataset column.
-    Returns the pair (df_with_scores, pivot_df_cebab, pivot_df_imdb).
-    """
-    df = df.copy()
-    df['score_avg'] = df.score.apply(get_average_scores)
-    df['score_fmted'] = df.score_avg.apply(get_tuple_2f_fmt)
-
-    func_order = ["PLMs", "CBE-PLMs", "CBE-PLMs-CM"]
-    model_order = ["LSTM", "GPT2", "BERT", "RoBERTa"]
-    mapping = {
-        'lstm': 'LSTM',
-        'gpt2': 'GPT2',
-        'bert-base-uncased': 'BERT',
-        'roberta-base': 'RoBERTa',
-    }
-
-    # Build unified multi-index columns: (dataset, D/D^, metric)
-    # Prepare task long
-    task_df = df.copy()
-    task_df['score_avg'] = task_df['score'].apply(get_average_scores)
-    task_df['fmt'] = task_df['score_avg'].apply(get_tuple_2f_fmt)
-    task_df['metric'] = 'task'
-    # Prepare concept long
-    concept_df = df.copy()
-    if 'concept_score' in concept_df.columns:
-        concept_df['score_avg'] = concept_df['concept_score'].apply(get_average_scores)
-        concept_df['fmt'] = concept_df['score_avg'].apply(get_tuple_2f_fmt)
-        concept_df['metric'] = 'concept'
-    else:
-        concept_df = concept_df.iloc[0:0]
-
-    merged = pd.concat([task_df[['function','model','dataset','data_type','metric','fmt']],
-                        concept_df[['function','model','dataset','data_type','metric','fmt']]], ignore_index=True)
-
-    merged = merged.reset_index(drop=True)
-    # Normalize model display names
-    merged['model'] = merged['model'].map(mapping)
-
-    # Pivot to columns MultiIndex
-    wide = merged.pivot_table(index=['function','model'],
-                              columns=['dataset','data_type','metric'],
-                              values='fmt', aggfunc='first')
-    # Reindex rows
-    wide = wide.reindex(pd.MultiIndex.from_product([func_order, model_order], names=["function","model"]))
-
-    # Ensure column order includes all combinations
-    desired_cols = []
-    for ds in ['cebab','imdb']:
-        for dt in ['D','D^']:
-            for m in ['task','concept']:
-                desired_cols.append((ds, dt, m))
-    # Add missing columns with NaN
-    for col in desired_cols:
-        if col not in wide.columns:
-            wide[col] = pd.NA
-    wide = wide[desired_cols]
-
-    return df, wide
-
-
 def main():
     """Entrypoint: run experiments, save CSV, and print CEBaB D/D^ and IMDB pivots."""
     df = run_all_experiments()
-    # df, dfp = build_pivot_table(df)
     df.to_csv(OUTPUT_CSV, index=False)
     print(f"\nSaved results to: {OUTPUT_CSV}")
-
-    # print("\nUnified Pivot (dataset, D/D^, task/concept):")
-    # print(dfp)
-
 
 if __name__ == "__main__":
     main()
