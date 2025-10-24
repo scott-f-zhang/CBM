@@ -8,7 +8,9 @@ import pandas as pd
 import json
 import os
 import glob
+import ast
 from typing import Dict, Any, Optional
+from pathlib import Path
 
 
 # Page configuration
@@ -85,6 +87,129 @@ CONCEPT_FULL_NAMES = {
     "background": "Background Setting",
     "editing": "Editing"
 }
+
+
+"""Model performance results discovery and loading utilities"""
+# Primary and fallback results directories
+RESULTS_DIR_PRIMARY = "/Users/scott/repos/CBM_NLP/cbm/results"
+try:
+    RESULTS_DIR_FALLBACK = str((Path(__file__).resolve().parent.parent / "cbm" / "results"))
+except Exception:
+    RESULTS_DIR_FALLBACK = str((Path.cwd() / "cbm" / "results"))
+
+KNOWN_DATASETS = ["essay", "imdb", "cebab", "qa"]
+
+
+@st.cache_data(show_spinner=False)
+def get_results_dir() -> str:
+    return RESULTS_DIR_PRIMARY if os.path.isdir(RESULTS_DIR_PRIMARY) else RESULTS_DIR_FALLBACK
+
+
+@st.cache_data(show_spinner=False)
+def list_result_csvs(dir_path: str) -> list:
+    files = glob.glob(os.path.join(dir_path, "*.csv"))
+    files = [f for f in files if os.path.basename(f).lower() != "table1.csv"]
+    files.sort(key=os.path.getmtime, reverse=True)
+    return files
+
+
+@st.cache_data(show_spinner=False)
+def infer_dataset_from_file(path: str) -> str:
+    try:
+        df_head = pd.read_csv(path, nrows=1)
+        if "dataset" in df_head.columns and pd.notna(df_head.loc[0, "dataset"]):
+            return str(df_head.loc[0, "dataset"]).strip().lower()
+    except Exception:
+        pass
+    name = os.path.basename(path).lower()
+    for ds in KNOWN_DATASETS:
+        if ds in name:
+            return ds
+    return "unknown"
+
+
+@st.cache_data(show_spinner=False)
+def group_files_by_dataset(files: list) -> Dict[str, list]:
+    groups: Dict[str, list] = {}
+    for f in files:
+        ds = infer_dataset_from_file(f)
+        groups.setdefault(ds, []).append(f)
+    for ds in groups:
+        groups[ds].sort(key=os.path.getmtime, reverse=True)
+    return groups
+
+
+@st.cache_data(show_spinner=False)
+def load_results_csv(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    for col in ["score", "concept_score"]:
+        if col in df.columns:
+            try:
+                parsed = df[col].apply(
+                    lambda s: (ast.literal_eval(s)[0] if isinstance(s, str) and s.startswith("[") else None)
+                )
+                try:
+                    has_any = parsed.notna().any()
+                except Exception:
+                    has_any = False
+                if has_any:
+                    # Use explicit, user-friendly metric names
+                    names = [
+                        'Task Accuracy', 'Task Macro-F1'
+                    ] if col == 'score' else [
+                        'Concept Accuracy', 'Concept Macro-F1'
+                    ]
+                    out = pd.DataFrame(parsed.tolist(), columns=names)
+                    df = pd.concat([df, out], axis=1)
+            except Exception:
+                pass
+    return df
+
+
+def render_model_performance_section() -> None:
+    dir_path = get_results_dir()
+    files = list_result_csvs(dir_path)
+    if not files:
+        st.info("No result CSVs found.")
+        return
+    groups = group_files_by_dataset(files)
+    try:
+        newest_ds = max(groups.items(), key=lambda kv: os.path.getmtime(kv[1][0]))[0]
+    except Exception:
+        newest_ds = sorted(groups.keys())[0]
+    ds_names = sorted(groups.keys(), key=lambda k: (k != newest_ds, k))
+    selected_ds = st.selectbox("Select dataset", ds_names, index=0)
+    ds_files = groups[selected_ds]
+    file_labels = [os.path.basename(f) for f in ds_files]
+    selected_label = st.selectbox("Select results file", file_labels, index=0)
+    selected_path = ds_files[file_labels.index(selected_label)]
+    df_results = load_results_csv(selected_path)
+
+    if not df_results.empty:
+        summary = df_results.iloc[0]
+        metric_defs = [
+            ("Task Accuracy", "Task Accuracy"),
+            ("Task Macro-F1", "Task Macro-F1"),
+            ("Concept Accuracy", "Concept Accuracy"),
+            ("Concept Macro-F1", "Concept Macro-F1"),
+        ]
+        available = [(label, col) for (label, col) in metric_defs if col in df_results.columns]
+        if available:
+            cols = st.columns(len(available))
+            for idx, (label, col) in enumerate(available):
+                try:
+                    val = float(summary[col])
+                    cols[idx].metric(label, f"{val:.3f}")
+                except Exception:
+                    cols[idx].metric(label, "-")
+
+    display_cols = [
+        c for c in [
+            'dataset', 'data_type', 'function', 'model',
+            'Task Accuracy', 'Task Macro-F1', 'Concept Accuracy', 'Concept Macro-F1'
+        ] if c in df_results.columns
+    ]
+    st.dataframe(df_results[display_cols] if display_cols else df_results, use_container_width=True)
 
 
 def check_backend_connection(base_url: str) -> Dict[str, Any]:
@@ -304,6 +429,8 @@ def main():
     st.info("📝 This demo uses the Essay dataset for programming answer quality assessment")
     st.markdown("---")
     
+    # Moved model performance section under Predict button in Tab 1
+    
     # Sidebar configuration
     st.sidebar.title("⚙️ Configuration")
     
@@ -364,6 +491,11 @@ def main():
             )
             
             predict_button = st.form_submit_button("🔮 Predict", use_container_width=True)
+        
+        # Model performance section (moved here under Predict button)
+        st.markdown("### Metrics")
+        with st.expander("Click to view metrics", expanded=False):
+            render_model_performance_section()
         
         # Process prediction
         if predict_button and text_input.strip():
