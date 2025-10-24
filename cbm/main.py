@@ -52,6 +52,7 @@ BASE_RUN = RunConfig(
     max_len=512,
     batch_size=8,
     early_stopping=True,
+    early_stopping_patience=5
 )
 
 # Which datasets and models to run

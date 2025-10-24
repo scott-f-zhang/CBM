@@ -105,7 +105,7 @@ def get_cbm_joint(
     criterion = torch.nn.CrossEntropyLoss()
 
     best_acc = 0.0
-    patience = 5 if cfg.early_stopping else float('inf')  # Early stopping patience
+    patience = (cfg.early_stopping_patience if cfg.early_stopping else float('inf'))  # Early stopping patience
     patience_counter = 0
     
     for epoch in range(cfg.num_epochs):
