@@ -91,9 +91,9 @@ def get_cbm_joint(
     model.to(device)
     head.to(device)
 
-    # Prepare save directory: <project_root>/saved_models/<dataset>/
+    # Prepare save directory: <project_root>/saved_models/<dataset>/<model_name>/
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    save_dir = os.path.join(PROJECT_ROOT, "saved_models", cfg.dataset)
+    save_dir = os.path.join(PROJECT_ROOT, "saved_models", cfg.dataset, cfg.model_name)
     os.makedirs(save_dir, exist_ok=True)
     model_path = os.path.join(save_dir, f"{cfg.model_name}_joint.pth")
     head_path = os.path.join(save_dir, f"{cfg.model_name}_ModelXtoCtoY_layer_joint.pth")

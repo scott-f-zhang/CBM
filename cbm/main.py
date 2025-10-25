@@ -60,7 +60,8 @@ DATASETS = ["essay"]  # choose from: "cebab", "imdb", "essay", "qa"
 MODELS = ["bert-base-uncased", "roberta-base"]
 
 # Results root path (per dataset CSVs will be written under this)
-RESULTS_ROOT = os.path.join(ROOT_DIR, "results")
+RESULTS_ROOT = os.path.join(MAIN_DIR, "results")
+MODEL_SAVE_ROOT = os.path.join(ROOT_DIR, "saved_models")
 
 
 from typing import Optional
@@ -207,6 +208,42 @@ def run_all_experiments() -> pd.DataFrame:
 
 def main():
     """Entrypoint: run experiments, save CSV, and print CEBaB D/D^ and IMDB pivots."""
+    # Startup summary
+    print("=" * 80)
+    print("CBM Experiments - Startup Summary")
+    print("=" * 80)
+    print(f"Project root: {ROOT_DIR}")
+    print(f"Script dir:  {MAIN_DIR}")
+    print(f"Results root: {RESULTS_ROOT} (cbm/results/<dataset>/result_<dataset>.csv)")
+    print(f"Datasets: {DATASETS}")
+    print(f"Models:   {MODELS}")
+    print(f"Model save root: {MODEL_SAVE_ROOT} (saved_models/<dataset>/<model_name>/...)")
+    print("Planned model checkpoint locations:")
+    for _ds in DATASETS:
+        print(f"  Dataset: {_ds}")
+        for _m in MODELS:
+            _mdir = os.path.join(MODEL_SAVE_ROOT, _ds, _m)
+            _std_model = os.path.join(_mdir, f"{_m}_model_standard.pth")
+            _std_head = os.path.join(_mdir, f"{_m}_classifier_standard.pth")
+            _j_model = os.path.join(_mdir, f"{_m}_joint.pth")
+            _j_head = os.path.join(_mdir, f"{_m}_ModelXtoCtoY_layer_joint.pth")
+            print(f"    - {_m}:")
+            print(f"        standard: {_std_model}")
+            print(f"                   {_std_head}")
+            print(f"        joint:    {_j_model}")
+            print(f"                   {_j_head}")
+    print("Planned result files:")
+    for _ds in DATASETS:
+        _out_dir = os.path.join(RESULTS_ROOT, _ds)
+        _out_file = os.path.join(_out_dir, f"result_{_ds}.csv")
+        print(f"  - {_ds}: {_out_file}")
+    print(
+        f"Run config: epochs={BASE_RUN.num_epochs}, max_len={BASE_RUN.max_len}, "
+        f"batch_size={BASE_RUN.batch_size}, early_stopping={BASE_RUN.early_stopping}, "
+        f"patience={BASE_RUN.early_stopping_patience}"
+    )
+    print("=" * 80)
+
     df = run_all_experiments()
     os.makedirs(RESULTS_ROOT, exist_ok=True)
     # Save per-dataset results CSVs
